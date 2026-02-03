@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (avoid committing large files)
+data/raw/
+data/processed/
+
+# MLflow
+mlruns/
+
+# PyTorch
+*.pt
+*.pth
+
+# Logs
+logs/
+*.log
+
+# Azure
+.azure/
+config.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
