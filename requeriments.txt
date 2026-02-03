@@ -1,8 +1,9 @@
-numpy
-pandas
-scikit-learn
+numpy version: 2.3.5
+pandas version: 2.3.3
+scikit-learn version: 1.8.0
 matplotlib
-seaborn
+seaborn version: 0.13.2
+missingno version: 0.5.2
 
 torch
 torchvision
