@@ -16,3 +16,6 @@ azure-identity
 
 jupyter
 notebook
+plotly>=6.5.2
+kaleido
+ipywidgets

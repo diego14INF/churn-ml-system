@@ -2,81 +2,142 @@ import math
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+import plotly.io as pio
+# Set a friendly default renderer for VSCode notebooks; the caller can still override via the `renderer` argument
+pio.renderers.default = 'vscode'
 
-def plot_eda_grid(df, features, target=None, cols=3):
+
+
+def plot_eda_grid_plotly(df, features, target=None, cols=3, max_categories=10, renderer=None):
     """
-    Plot multiple features in a grid using appropriate visualization
-    depending on feature type.
+    Plot EDA grid fully in Plotly.
+    - Numeric → Histogram (univariate) / Boxplot (vs target)
+    - Categorical ≤ max_categories → Bar plot
+    - Categorical > max_categories → Boxplot (to avoid label overlap)
 
     Parameters
     ----------
-    df : pandas.DataFrame
-    features : list
-        List of feature names to plot.
-    target : str, optional
-        Target variable for bivariate analysis.
-    cols : int
-        Number of columns in the grid.
+    renderer : str or None
+        Optional plotly renderer to use when displaying the figure (e.g. 'vscode', 'notebook', 'browser').
     """
 
-    # Filter out ID-like columns
-    features = [
-        f for f in features
-        if df[f].nunique() < df.shape[0]
-    ]
-
-    rows = math.ceil(len(features) / cols)
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
-    axes = axes.flatten()
-
-    for i, feature in enumerate(features):
-        ax = axes[i]
-
-        # Numerical features
-        if pd.api.types.is_numeric_dtype(df[feature]):
-            sns.histplot(df[feature], kde=True, ax=ax)
-            ax.set_title(f"{feature}")
-
-        # Categorical features
-        else:
-            order = df[feature].value_counts().index
-            sns.countplot(x=feature, data=df, order=order, ax=ax)
-            ax.set_title(f"{feature}")
-            ax.tick_params(axis='x', rotation=45)
-
-    # Remove empty subplots
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-
-    plt.tight_layout()
-    plt.show()
-
-def plot_eda_grid_vs_target(df, features, target, cols=3):
+    # Remove ID-like columns
     features = [
         f for f in features
         if f != target and df[f].nunique() < df.shape[0]
     ]
 
     rows = math.ceil(len(features) / cols)
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
-    axes = axes.flatten()
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        subplot_titles=features
+    )
 
     for i, feature in enumerate(features):
-        ax = axes[i]
+        row = i // cols + 1
+        col = i % cols + 1
 
+        # =========================
+        # NUMERICAL VARIABLES
+        # =========================
         if pd.api.types.is_numeric_dtype(df[feature]):
-            sns.boxplot(x=target, y=feature, data=df, ax=ax)
-            ax.set_title(f"{feature} vs {target}")
+
+            if target is None:
+                fig.add_trace(
+                    go.Histogram(
+                        x=df[feature],
+                        nbinsx=30,
+                        name=feature,
+                        showlegend=False
+                    ),
+                    row=row, col=col
+                )
+            else:
+                for cls in df[target].unique():
+                    fig.add_trace(
+                        go.Box(
+                            y=df[df[target] == cls][feature],
+                            name=str(cls),
+                            boxpoints='outliers',
+                            showlegend=(i == 0)
+                        ),
+                        row=row, col=col
+                    )
+
+        # =========================
+        # CATEGORICAL VARIABLES
+        # =========================
         else:
-            order = df[feature].value_counts().index
-            sns.countplot(x=feature, hue=target, data=df, order=order, ax=ax)
-            ax.set_title(f"{feature} vs {target}")
-            ax.tick_params(axis='x', rotation=45)
+            n_categories = df[feature].nunique()
 
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
+            if target is None:
+                vc = df[feature].value_counts()
 
-    plt.tight_layout()
-    plt.show()
+                if n_categories <= max_categories:
+                    fig.add_trace(
+                        go.Bar(
+                            x=vc.index.astype(str),
+                            y=vc.values,
+                            showlegend=False
+                        ),
+                        row=row, col=col
+                    )
+                else:
+                    fig.add_trace(
+                        go.Box(
+                            y=vc.values,
+                            boxpoints='all',
+                            showlegend=False
+                        ),
+                        row=row, col=col
+                    )
+
+            else:
+                if n_categories <= max_categories:
+                    for cls in df[target].unique():
+                        vc = (
+                            df[df[target] == cls][feature]
+                            .value_counts()
+                        )
+                        fig.add_trace(
+                            go.Bar(
+                                x=vc.index.astype(str),
+                                y=vc.values,
+                                name=str(cls),
+                                showlegend=(i == 0)
+                            ),
+                            row=row, col=col
+                        )
+                else:
+                    for cls in df[target].unique():
+                        fig.add_trace(
+                            go.Box(
+                                y=df[df[target] == cls][feature],
+                                name=str(cls),
+                                boxpoints='outliers',
+                                showlegend=(i == 0)
+                            ),
+                            row=row, col=col
+                        )
+
+    fig.update_layout(
+        height=250 * rows,
+        width=250 * cols,
+        title_text="EDA Grid (Plotly)",
+        showlegend=True
+    )
+
+    # Use explicit renderer if provided (helps VSCode/Jupyter display correctly)
+    if renderer is not None:
+        fig.show(renderer=renderer)
+    else:
+        fig.show()
+
+
 
 
